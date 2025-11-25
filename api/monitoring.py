@@ -3,18 +3,24 @@ import json
 import urllib.request
 from http.server import BaseHTTPRequestHandler
 
-# -------------------------
-# ENV VARS
-# -------------------------
+# -----------------------
+# VARIABLES ENV
+# -----------------------
 AIRTABLE_API_KEY = os.environ.get("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
-AIRTABLE_TABLE_NAME = os.environ.get("AIRTABLE_TABLE_NAME")  # ex: Monitoring
+AIRTABLE_TABLE_NAME = os.environ.get("AIRTABLE_TABLE_NAME")
+
+print("DEBUG - AIRTABLE_API_KEY:", AIRTABLE_API_KEY)
+print("DEBUG - AIRTABLE_BASE_ID:", AIRTABLE_BASE_ID)
+print("DEBUG - AIRTABLE_TABLE_NAME:", AIRTABLE_TABLE_NAME)
 
 
 class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
-        # Lire JSON
+        # -----------------------
+        # LECTURE DU JSON
+        # -----------------------
         length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(length)
 
@@ -26,20 +32,20 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(f"Invalid JSON: {e}".encode())
             return
 
-        # -------------------------
-        # Airtable URL
-        # -------------------------
+        print("DEBUG - JSON reçu:", body)
+
+        # -----------------------
+        # URL AIRTABLE
+        # -----------------------
         url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
+        print("DEBUG - URL:", url)
 
         headers = {
             "Authorization": f"Bearer {AIRTABLE_API_KEY}",
             "Content-Type": "application/json"
         }
 
-        # -------------------------
-        # PAYLOAD (chaque champ DOIT exister dans Airtable)
-        # -------------------------
-        payload = json.dumps({
+        data = {
             "fields": {
                 "Monitoring": body.get("Monitoring", ""),
                 "Automata": body.get("Automata", ""),
@@ -50,16 +56,24 @@ class handler(BaseHTTPRequestHandler):
                 "Message": body.get("Message", ""),
                 "Date": body.get("Date", "")
             }
-        }).encode()
+        }
 
+        print("DEBUG - Data envoyée:", data)
+
+        payload = json.dumps(data).encode()
         req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
 
         try:
-            with urllib.request.urlopen(req) as response:
-                self.send_response(200)
-                self.end_headers()
-                self.wfile.write(b"OK")
+            response = urllib.request.urlopen(req)
+            result = response.read().decode()
+            print("DEBUG - Airtable Response:", result)
+
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"OK")
+
         except Exception as e:
+            print("DEBUG - Airtable ERROR:", e)
             self.send_response(500)
             self.end_headers()
             self.wfile.write(f"Airtable error: {e}".encode())
