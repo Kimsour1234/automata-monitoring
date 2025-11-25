@@ -3,14 +3,18 @@ import json
 import urllib.request
 from http.server import BaseHTTPRequestHandler
 
+# -------------------------
+# ENV VARS
+# -------------------------
 AIRTABLE_API_KEY = os.environ.get("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
-AIRTABLE_TABLE_NAME = os.environ.get("AIRTABLE_TABLE_NAME")
+AIRTABLE_TABLE_NAME = os.environ.get("AIRTABLE_TABLE_NAME")  # ex: Monitoring
 
 
 class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
+        # Lire JSON
         length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(length)
 
@@ -22,6 +26,9 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(f"Invalid JSON: {e}".encode())
             return
 
+        # -------------------------
+        # Airtable URL
+        # -------------------------
         url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
 
         headers = {
@@ -29,6 +36,9 @@ class handler(BaseHTTPRequestHandler):
             "Content-Type": "application/json"
         }
 
+        # -------------------------
+        # PAYLOAD (chaque champ DOIT exister dans Airtable)
+        # -------------------------
         payload = json.dumps({
             "fields": {
                 "Monitoring": body.get("Monitoring", ""),
