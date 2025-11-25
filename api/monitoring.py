@@ -1,11 +1,9 @@
 import os
 import json
 import urllib.request
+from urllib.error import HTTPError
 from http.server import BaseHTTPRequestHandler
 
-# -----------------------
-# VARIABLES ENV
-# -----------------------
 AIRTABLE_API_KEY = os.environ.get("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.environ.get("AIRTABLE_TABLE_NAME")
@@ -18,9 +16,6 @@ print("DEBUG - AIRTABLE_TABLE_NAME:", AIRTABLE_TABLE_NAME)
 class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
-        # -----------------------
-        # LECTURE DU JSON
-        # -----------------------
         length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(length)
 
@@ -34,9 +29,6 @@ class handler(BaseHTTPRequestHandler):
 
         print("DEBUG - JSON reçu:", body)
 
-        # -----------------------
-        # URL AIRTABLE
-        # -----------------------
         url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
         print("DEBUG - URL:", url)
 
@@ -72,8 +64,17 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"OK")
 
+        except HTTPError as e:
+            err_body = e.read().decode()
+            print("DEBUG - Airtable HTTPError code:", e.code)
+            print("DEBUG - Airtable ERROR BODY:", err_body)
+
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(f"Airtable error: {e.code} {err_body}".encode())
+
         except Exception as e:
-            print("DEBUG - Airtable ERROR:", e)
+            print("DEBUG - Airtable OTHER ERROR:", e)
             self.send_response(500)
             self.end_headers()
             self.wfile.write(f"Airtable error: {e}".encode())
