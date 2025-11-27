@@ -2,19 +2,15 @@ import os
 import json
 import urllib.request
 from http.server import BaseHTTPRequestHandler
+from datetime import datetime
 
-# -----------------------------------------------------
-# VARIABLES ENVIRONNEMENT
-# -----------------------------------------------------
 AIRTABLE_API_KEY = os.environ.get("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
-AIRTABLE_TABLE_NAME = os.environ.get("AIRTABLE_TABLE_NAME")  # "Monitoring"
-
+AIRTABLE_TABLE_NAME = os.environ.get("AIRTABLE_TABLE_NAME")
 
 class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
-        # Lire le JSON reçu
         length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(length)
 
@@ -26,9 +22,19 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(f"Invalid JSON: {e}".encode())
             return
 
-        # -----------------------------------------------------
-        # URL Airtable
-        # -----------------------------------------------------
+        # -------------------------------
+        # Gestion de la date universelle
+        # -------------------------------
+        raw_date = body.get("Date", "")
+
+        try:
+            # si Make envoie une date ISO
+            d = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
+            final_date = d.strftime("%Y-%m-%d %H:%M:%S")
+        except:
+            # fallback : date actuelle
+            final_date = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
         url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
 
         headers = {
@@ -36,9 +42,6 @@ class handler(BaseHTTPRequestHandler):
             "Content-Type": "application/json"
         }
 
-        # -----------------------------------------------------
-        # Mappage EXACT avec ta table Airtable (tout texte)
-        # -----------------------------------------------------
         data = {
             "fields": {
                 "Workflow": body.get("Workflow", ""),
@@ -46,19 +49,14 @@ class handler(BaseHTTPRequestHandler):
                 "Sensor": body.get("Sensor", ""),
                 "Statut": body.get("Statut", ""),
                 "Message": body.get("Message", ""),
-                "Date": body.get("Date", "")
+                "Date": final_date
             }
         }
 
         payload = json.dumps(data).encode()
 
-        req = urllib.request.Request(
-            url, data=payload, headers=headers, method="POST"
-        )
+        req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
 
-        # -----------------------------------------------------
-        # Envoi à Airtable
-        # -----------------------------------------------------
         try:
             with urllib.request.urlopen(req) as response:
                 self.send_response(200)
