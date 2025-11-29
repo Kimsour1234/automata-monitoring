@@ -3,19 +3,37 @@ import json
 import urllib.request
 from http.server import BaseHTTPRequestHandler
 
-# Variables d'environnement
 AIRTABLE_API_KEY = os.environ.get("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
 
-# 👈 EXACT : ta variable actuelle dans Vercel
+# ✔️ EXACT : c'est la variable Vercel qui contient "Monitoring 2"
 AIRTABLE_TABLE_MONITORING_IA = os.environ.get("AIRTABLE_TABLE_MONITORING_IA")
+
+
+def format_status(value):
+    if not value:
+        return ""
+
+    v = value.lower()
+
+    # Sensor
+    if v == "log":
+        return "🟢 Log"
+    if v == "erreur":
+        return "🔴 Erreur"
+
+    # Statut
+    if v == "succès":
+        return "🟢 Succès"
+    if v == "échec":
+        return "🔴 Échec"
+
+    return value
 
 
 class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
-
-        # Lire le JSON reçu
         length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(length)
 
@@ -27,7 +45,7 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(f"Invalid JSON: {e}".encode())
             return
 
-        # URL Airtable IA
+        # 🔥 La table IA = "Monitoring 2"
         url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_MONITORING_IA}"
 
         headers = {
@@ -35,16 +53,15 @@ class handler(BaseHTTPRequestHandler):
             "Content-Type": "application/json"
         }
 
-        # Champs EXACTS de ta table Monitoring_IA
         fields = {
-            # Logs / infos brutes
+            # Logs de base
             "Workflow": body.get("Workflow", ""),
             "Module": body.get("Module", ""),
-            "Sensor": body.get("Sensor", ""),     # log / erreur
-            "Statut": body.get("Statut", ""),     # succès / échec
+            "Sensor": format_status(body.get("Sensor", "")),
+            "Statut": format_status(body.get("Statut", "")),
             "Message": body.get("Message", ""),
 
-            # Champs IA que TU AS créé
+            # Champs IA
             "Résumé global": body.get("ResumeGlobal", ""),
             "Tendances détectées": body.get("Tendances", ""),
             "Modules à risque": body.get("ModulesRisque", ""),
@@ -56,8 +73,7 @@ class handler(BaseHTTPRequestHandler):
             "Total erreurs": body.get("TotalErreurs", None)
         }
 
-        data = {"fields": fields}
-        payload = json.dumps(data).encode()
+        payload = json.dumps({"fields": fields}).encode()
 
         req = urllib.request.Request(
             url, data=payload, headers=headers, method="POST"
