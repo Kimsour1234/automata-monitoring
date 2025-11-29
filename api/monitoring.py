@@ -8,6 +8,26 @@ AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = os.environ.get("AIRTABLE_TABLE_NAME")  # "Monitoring"
 
 
+# 🔥 Fonction pour traduire + colorer les statuts
+def format_status(value):
+    if not value:
+        return ""
+
+    v = value.lower()
+
+    if v == "error":
+        return "🔴 Erreur"
+    if v == "failed":
+        return "🔴 Échec"
+    if v == "success":
+        return "🟢 Succès"
+    if v == "log":
+        return "🟢 Log"
+
+    # fallback
+    return value
+
+
 class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
@@ -31,16 +51,19 @@ class handler(BaseHTTPRequestHandler):
             "Content-Type": "application/json"
         }
 
-        # Champs de base (tout texte, sans Date pour l'instant)
+        # Champs de base avec conversion des statuts
         fields = {
             "Workflow": body.get("Workflow", ""),
             "Module": body.get("Module", ""),
-            "Sensor": body.get("Sensor", ""),
-            "Statut": body.get("Statut", ""),
+
+            # 🔥 Conversion automatique
+            "Sensor": format_status(body.get("Sensor", "")),
+            "Statut": format_status(body.get("Statut", "")),
+
             "Message": body.get("Message", "")
         }
 
-        # 🔥 Date OPTIONNELLE : on ne l'ajoute QUE si elle existe et n'est pas vide
+        # 🔥 Date OPTIONNELLE : ajout si fournie
         date_value = body.get("Date")
         if date_value:
             fields["Date"] = date_value
