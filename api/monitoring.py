@@ -5,26 +5,25 @@ from http.server import BaseHTTPRequestHandler
 
 AIRTABLE_API_KEY = os.environ.get("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
-AIRTABLE_TABLE_NAME = os.environ.get("AIRTABLE_TABLE_NAME")  # "Monitoring"
+AIRTABLE_TABLE_NAME = os.environ.get("AIRTABLE_TABLE_NAME")  # "Monitoring_3"
 
 
-# 🔥 Fonction pour traduire + colorer les statuts
+# 🔥 Fonction pour traduire + colorer le statut
 def format_status(value):
     if not value:
         return ""
 
     v = value.lower()
 
-    if v == "error":
-        return "🔴 Erreur"
-    if v == "failed":
-        return "🔴 Échec"
     if v == "success":
-        return "🟢 Succès"
+        return "🟢 Success"
+    if v == "error":
+        return "🔴 Error"
+    if v == "failed":
+        return "🔴 Failed"
     if v == "log":
         return "🟢 Log"
 
-    # fallback
     return value
 
 
@@ -51,22 +50,14 @@ class handler(BaseHTTPRequestHandler):
             "Content-Type": "application/json"
         }
 
-        # Champs de base avec conversion des statuts
+        # Champs EXACTS adaptés à ta table Monitoring_3
         fields = {
             "Workflow": body.get("Workflow", ""),
             "Module": body.get("Module", ""),
-
-            # 🔥 Conversion automatique
-            "Sensor": format_status(body.get("Sensor", "")),
-            "Statut": format_status(body.get("Statut", "")),
-
+            "Type": body.get("Type", ""),                   # success / error
+            "Status": format_status(body.get("Status", "")),# 🟢 Success / 🔴 Error
             "Message": body.get("Message", "")
         }
-
-        # 🔥 Date OPTIONNELLE : ajout si fournie
-        date_value = body.get("Date")
-        if date_value:
-            fields["Date"] = date_value
 
         data = {"fields": fields}
         payload = json.dumps(data).encode()
@@ -76,10 +67,10 @@ class handler(BaseHTTPRequestHandler):
         )
 
         try:
-            with urllib.request.urlopen(req) as response:
-                self.send_response(200)
-                self.end_headers()
-                self.wfile.write(b"OK")
+            urllib.request.urlopen(req)
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"OK")
         except Exception as e:
             self.send_response(500)
             self.end_headers()
